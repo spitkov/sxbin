@@ -668,7 +668,7 @@ def upload_pastebin():
         vanity = shortuuid.uuid()[:8]
         print(f"Generated vanity: {vanity}")
         
-        user_id = current_user.id if current_user.is_authenticated else None
+        user_id = current_user.id if current_user.is_authenticated else Anonymous
         print(f"User ID: {user_id}")
         
         db = get_db()
