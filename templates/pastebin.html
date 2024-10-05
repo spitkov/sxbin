@@ -169,7 +169,7 @@
     <a href="/" class="home-button">&#8962;</a>
     <div class="container">
         <h2>Content</h2>
-        <p>Uploaded by: {{ 'Anonymous' if content.username is None else content.username }}</p>
+        <p>Uploaded by: {{ 'Anonymous' if content.username == 'None' else content.username }}</p>
         <p>Created at: {{ created_at }}</p>
         
         <div class="highlight">
