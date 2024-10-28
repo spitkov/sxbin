@@ -324,7 +324,7 @@
     <div class="container">
         <nav>
             {% if user %}
-                <a href="{{ url_for('dashboard') }}">View Dashboard</a>
+                <a href="{{ url_for('user_files', username=user.username) }}">View Dashboard</a>
                 <a href="{{ url_for('logout') }}">Logout</a>
             {% else %}
                 <a href="{{ url_for('login') }}">Login</a>
@@ -708,17 +708,10 @@
     }
 
     function shortenUrl() {
-        const urlInput = document.getElementById('urlInput');
-        let url = urlInput.value.trim();
+        const url = document.getElementById('urlInput').value;
         const isPrivate = document.getElementById('urlIsPrivate').checked;
         const password = isPrivate ? document.getElementById('urlPassword').value : null;
         
-        // Add https:// if the URL doesn't start with http:// or https://
-        if (!/^https?:\/\//i.test(url)) {
-            url = 'https://' + url;
-            urlInput.value = url;  // Update the input field with the modified URL
-        }
-
         const data = {
             url: url,
             password: password
@@ -742,7 +735,7 @@
                 const shortUrl = `${window.location.origin}/${data.vanity}`;
                 let resultHtml = `URL shortened. Access it <a href="${shortUrl}" target="_blank">${shortUrl}</a>`;
                 if (isPrivate) {
-                    resultHtml += ` (Password protected)`;
+                    resultHtml += `<br>Password-protected link: <a href="${shortUrl}/${password}" target="_blank">${shortUrl}/${password}</a>`;
                 }
                 document.getElementById('urlResult').innerHTML = resultHtml;
             } else {
@@ -751,7 +744,7 @@
         })
         .catch(error => {
             console.error('Error:', error);
-            document.getElementById('urlResult').innerHTML = 'An error occurred while shortening the URL';
+            document.getElementById('urlResult').innerHTML = `An error occurred: ${error.message}`;
         });
     }
 

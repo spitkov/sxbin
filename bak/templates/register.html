@@ -114,13 +114,7 @@
     </style>
 </head>
 <body>
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ category }}">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
+    <a href="/" class="back-button">&#8592;</a>
     <div class="content">
         <div class="container">
             <h2>Register for sxbin</h2>
@@ -134,7 +128,7 @@
                 <div id="password-uppercase" class="password-requirement requirement-not-met">At least one uppercase letter</div>
                 <input type="submit" value="Register" id="submit-button" disabled>
             </form>
-            <p>Already have an account? <a href="{{ url_for('login') }}">Login here</a></p>
+            <p>Already have an account? <a href="{{ url_for('login') }}">Login</a></p>
         </div>
     </div>
 
@@ -170,11 +164,6 @@
                     document.getElementById('error-message').textContent = data.error;
                     document.getElementById('error-message').style.display = 'block';
                 }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                document.getElementById('error-message').textContent = 'An error occurred during registration';
-                document.getElementById('error-message').style.display = 'block';
             });
         });
     </script>

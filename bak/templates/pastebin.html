@@ -163,61 +163,13 @@
         }
 
         {{ css|safe }}
-
-        /* Add these new styles for the modal */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(0,0,0,0.4);
-        }
-        .modal-content {
-            background-color: var(--bg-color);
-            margin: 15% auto;
-            padding: 20px;
-            border: 1px solid var(--highlight-border);
-            width: 300px;
-            border-radius: 8px;
-        }
-        .modal-input {
-            width: 100%;
-            padding: 8px;
-            margin: 10px 0;
-            border-radius: 4px;
-            border: 1px solid var(--highlight-border);
-            background-color: var(--highlight-bg);
-            color: var(--text-color);
-        }
-        .modal-buttons {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-top: 15px;
-        }
-        .btn-ok {
-            background-color: #4CAF50;
-            color: white;
-        }
-        .btn-cancel {
-            background-color: #888;
-            color: white;
-        }
-        .btn-remove {
-            background-color: #f44336;
-            color: white;
-        }
     </style>
 </head>
 <body>
     <a href="/" class="home-button">&#8962;</a>
     <div class="container">
         <h2>Content</h2>
-        <p>Uploaded by: {{ content.username }}</p>
+        <p>Uploaded by: {{ 'Anonymous' if content.username == 'None' else content.username }}</p>
         <p>Created at: {{ created_at }}</p>
         
         <div class="highlight">
@@ -250,20 +202,6 @@
         </p>
     </footer>
 
-    <!-- Add this new modal for password editing -->
-    <div id="passwordModal" class="modal">
-        <div class="modal-content">
-            <h3 id="passwordModalTitle">Edit Password</h3>
-            <input type="password" id="newPassword1" class="modal-input" placeholder="Enter new password">
-            <input type="password" id="newPassword2" class="modal-input" placeholder="Confirm new password">
-            <div class="modal-buttons">
-                <button onclick="closePasswordModal()" class="btn">Cancel</button>
-                <button onclick="updatePassword()" class="btn">OK</button>
-                <button onclick="removePassword()" class="btn" id="removePasswordBtn">Remove Password</button>
-            </div>
-        </div>
-    </div>
-
     <script>
         const rawContent = {{ raw_content|tojson }};
 
@@ -288,89 +226,6 @@
         // Check for saved theme preference
         if (localStorage.getItem('lightMode') === 'true') {
             html.classList.add('light-mode');
-        }
-
-        let currentVanity = '{{ vanity }}';
-
-        function openEditPasswordModal() {
-            document.getElementById('passwordModalTitle').textContent = 'Edit Password';
-            document.getElementById('removePasswordBtn').style.display = 'inline-block';
-            document.getElementById('passwordModal').style.display = 'block';
-        }
-
-        function openAddPasswordModal() {
-            document.getElementById('passwordModalTitle').textContent = 'Add Password';
-            document.getElementById('removePasswordBtn').style.display = 'none';
-            document.getElementById('passwordModal').style.display = 'block';
-        }
-
-        function closePasswordModal() {
-            document.getElementById('passwordModal').style.display = 'none';
-            document.getElementById('newPassword1').value = '';
-            document.getElementById('newPassword2').value = '';
-        }
-
-        function updatePassword() {
-            const password1 = document.getElementById('newPassword1').value;
-            const password2 = document.getElementById('newPassword2').value;
-
-            if (password1 !== password2) {
-                alert('Passwords do not match');
-                return;
-            }
-
-            fetch(`/edit_password/${currentVanity}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    action: 'update',
-                    new_password: password1
-                }),
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Password updated successfully');
-                    closePasswordModal();
-                    location.reload();  // Reload the page to reflect the changes
-                } else {
-                    alert('Error updating password: ' + data.error);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred while updating the password');
-            });
-        }
-
-        function removePassword() {
-            if (confirm('Are you sure you want to remove the password?')) {
-                fetch(`/edit_password/${currentVanity}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        action: 'remove'
-                    }),
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('Password removed successfully');
-                        closePasswordModal();
-                        location.reload();  // Reload the page to reflect the changes
-                    } else {
-                        alert('Error removing password: ' + data.error);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('An error occurred while removing the password');
-                });
-            }
         }
     </script>
 </body>

@@ -855,9 +855,10 @@
         }
 
         .dropdown:hover {
-            z-index: 1003; 
+            z-index: 1003; /* Increased z-index */
         }
 
+        /* Remove any max-height or overflow properties on parent containers */
         .tab-content,
         .file-list,
         .upload-list {
@@ -1627,61 +1628,6 @@
             background-color: var(--highlight-bg);
             border-radius: 5px;
         }
-
-        .qr-modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(0,0,0,0.4);
-        }
-
-        .qr-modal-content {
-            background-color: var(--bg-color);
-            margin: 15% auto;
-            padding: 20px;
-            border: 1px solid var(--highlight-border);
-            width: 80%;
-            max-width: 500px;
-            text-align: center;
-        }
-
-        .qr-close {
-            color: var(--text-color);
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        .qr-close:hover,
-        .qr-close:focus {
-            color: var(--btn-bg-color);
-            text-decoration: none;
-            cursor: pointer;
-        }
-
-        #qrcode {
-            margin: 20px auto;
-        }
-
-        .maximize-btn {
-            background-color: var(--btn-bg-color);
-            color: var(--btn-text-color);
-            border: none;
-            padding: 10px 20px;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 16px;
-            margin: 4px 2px;
-            cursor: pointer;
-            border-radius: 4px;
-        }
     </style>
 
     <script>
@@ -1779,7 +1725,7 @@
 
             switch (window.currentAction.action) {
                 case 'createFolder':
-                    createFolderAction(value);
+                    createFolder(value);
                     break;
                 case 'createFile':
                     createFile(value);
@@ -1792,30 +1738,17 @@
             closeModal();
         }
 
-        function createFolderAction(folderName) {
-            const currentPath = '{{ current_path }}';
-            fetch(`/dash/{{ username }}/create_folder`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ 
-                    folder_name: folderName,
-                    current_path: currentPath
-                }),
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    location.reload();
-                } else {
-                    alert('Error creating folder: ' + data.error);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred while creating the folder');
-            });
+        function createFolder(name) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = "{{ url_for('create_folder', username=username) }}";
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'folder_name';
+            input.value = name;
+            form.appendChild(input);
+            document.body.appendChild(form);
+            form.submit();
         }
 
         function createFile(name) {
@@ -2326,48 +2259,6 @@
                 closeResetApiKeyModal();
             });
         }
-
-        let qrcode;
-        function showQRCode() {
-            const modal = document.getElementById('qrModal');
-            modal.style.display = "block";
-            if (!qrcode) {
-                qrcode = new QRCode(document.getElementById("qrcode"), {
-                    text: "{{ url_for('serve_user_page', username=username, _external=True) }}",
-                    width: 256,
-                    height: 256,
-                    colorDark : "#000000",
-                    colorLight : "#ffffff",
-                    correctLevel : QRCode.CorrectLevel.H
-                });
-            }
-        }
-
-        function closeQRModal() {
-            const modal = document.getElementById('qrModal');
-            modal.style.display = "none";
-        }
-
-        function maximizeQR() {
-            const qrcodeDiv = document.getElementById("qrcode");
-            if (qrcodeDiv.style.transform === "scale(2)") {
-                qrcodeDiv.style.transform = "scale(1)";
-                qrcodeDiv.style.transition = "transform 0.3s ease";
-            } else {
-                qrcodeDiv.style.transform = "scale(2)";
-                qrcodeDiv.style.transition = "transform 0.3s ease";
-            }
-        }
-
-        // Close the modal when clicking outside of it
-        window.onclick = function(event) {
-            const modal = document.getElementById('qrModal');
-            if (event.target == modal) {
-                modal.style.display = "none";
-            }
-        }
     </script>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </body>
 </html>

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ filename }} - sxbin</title>
+    <meta property="og:title" content="{{ filename }}">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ request.url }}">
+    <meta property="og:description" content="File size: {{ file_size|filesizeformat }} | Uploaded by: {{ username }} | Date: {{ created_at.strftime('%Y-%m-%d %H:%M:%S') }}">
+    {% if is_embeddable %}
+    <meta property="og:image" content="{{ file_url }}/raw">
+    {% endif %}
+    <meta property="og:site_name" content="sxbin">
+    <meta property="theme-color" content="#4CAF50">
+</head>
+<body>
+    <script>
+        window.location.href = "{{ file_url }}";
+    </script>
+</body>
+</html>

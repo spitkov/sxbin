@@ -1,71 +1,107 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark-mode">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Content Info</title>
+    <title>Content Info - sxbin</title>
     <style>
+        :root {
+            --bg-color: #1e1e1e;
+            --text-color: #e0e0e0;
+            --btn-bg-color: #2e7d32;
+            --btn-text-color: #e0e0e0;
+            --btn-hover-color: #1b5e20;
+        }
+
+        .light-mode {
+            --bg-color: #ffffff;
+            --text-color: #333333;
+            --btn-bg-color: #4CAF50;
+            --btn-text-color: white;
+            --btn-hover-color: #45a049;
+        }
+
         body {
             font-family: Arial, sans-serif;
             line-height: 1.6;
-            margin: 0;
-            padding: 20px;
-            background-color: #1a1a1a;
-            color: #f0f0f0;
-        }
-        .container {
+            color: var(--text-color);
+            background-color: var(--bg-color);
             max-width: 800px;
             margin: 0 auto;
+            padding: 20px;
+            transition: background-color 0.3s, color 0.3s;
         }
-        h2 {
-            color: #4CAF50;
-        }
-        .info-item {
-            margin-bottom: 10px;
-        }
+
         .btn {
             display: inline-block;
-            background-color: #4CAF50;
-            color: white;
-            padding: 8px 12px;
+            background-color: var(--btn-bg-color);
+            color: var(--btn-text-color);
+            padding: 10px 20px;
             text-decoration: none;
-            border-radius: 4px;
-            margin: 5px 0;
+            border-radius: 5px;
+            margin-top: 20px;
+            transition: background-color 0.3s;
         }
+
         .btn:hover {
-            background-color: #45a049;
+            background-color: var(--btn-hover-color);
+        }
+
+        #theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: var(--btn-bg-color);
+            color: var(--btn-text-color);
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 4px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>Content Information</h2>
-        <div class="info-item"><strong>Type:</strong> {{ info.type }}</div>
-        <div class="info-item"><strong>Vanity URL:</strong> {{ info.vanity }}</div>
-        <div class="info-item"><strong>Created At:</strong> {{ info.created_at }}</div>
-        <div class="info-item"><strong>Uploaded By:</strong> {{ info.username }}</div>
-        {% if info.type == 'file' %}
-            <div class="info-item"><strong>Filename:</strong> {{ info.data }}</div>
-            {% if info.file_size %}
-                <div class="info-item"><strong>File Size:</strong> {{ info.file_size }} bytes</div>
-            {% endif %}
-            <a href="{{ url_for('redirect_vanity', vanity=info.vanity)|replace('/download', '') }}" class="btn">View/Embed</a>
-            <a href="{{ url_for('redirect_vanity', vanity=info.vanity) ~ ('/download' if '/download' not in url_for('redirect_vanity', vanity=info.vanity) else '') }}" class="btn">Download</a>
-        {% elif info.type == 'url' %}
-            <div class="info-item"><strong>Target URL:</strong> {{ info.data }}</div>
-            <a href="{{ url_for('redirect_vanity', vanity=info.vanity) }}" class="btn">Visit URL</a>
-        {% elif info.type == 'pastebin' %}
-            <a href="{{ url_for('redirect_vanity', vanity=info.vanity) }}" class="btn">View Pastebin</a>
-            <a href="{{ url_for('raw_vanity', vanity=info.vanity) }}" class="btn">View Raw</a>
-        {% endif %}
-        {% if current_user.is_authenticated and current_user.username == info.username %}
-            {% if info.type != 'file' or not info.is_media %}
-                <a href="{{ url_for('edit_content', vanity=info.vanity) }}" class="btn">Edit</a>
-            {% endif %}
-            <form action="{{ url_for('delete_content', vanity=info.vanity) }}" method="post" style="display: inline;">
-                <button type="submit" class="btn">Delete</button>
-            </form>
-        {% endif %}
-    </div>
+    <button id="theme-toggle">Toggle Theme</button>
+    <h1>Content Information</h1>
+    <p><strong>Type:</strong> {{ info.type }}</p>
+    <p><strong>Uploaded by:</strong> {{ info.username }}</p>
+    <p><strong>Created at:</strong> {{ info.created_at }}</p>
+    {% if info.is_private %}
+        <p><strong>Access:</strong> Private</p>
+    {% else %}
+        <p><strong>Access:</strong> Public</p>
+    {% endif %}
+    {% if info.file_size %}
+        <p><strong>File size:</strong> {{ info.file_size|filesizeformat }}</p>
+    {% endif %}
+    {% if info.type == 'url' %}
+        <p><strong>Original URL:</strong> {{ info.data }}</p>
+        <a href="{{ info.data }}" class="btn">Visit URL</a>
+    {% elif info.type == 'file' %}
+        <a href="{{ url_for('redirect_vanity', vanity=info.vanity) }}" class="btn">View File</a>
+    {% elif info.type == 'pastebin' %}
+        <a href="{{ url_for('redirect_vanity', vanity=info.vanity) }}" class="btn">View Pastebin</a>
+    {% endif %}
+    <a href="{{ url_for('raw_vanity', vanity=info.vanity) }}" class="btn">View Raw</a>
+
+    <script>
+        const themeToggle = document.getElementById('theme-toggle');
+        const html = document.documentElement;
+
+        function toggleTheme() {
+            html.classList.toggle('light-mode');
+            html.classList.toggle('dark-mode');
+            localStorage.setItem('theme', html.classList.contains('light-mode') ? 'light' : 'dark');
+        }
+
+        themeToggle.addEventListener('click', toggleTheme);
+
+        // Check for saved theme preference
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'light') {
+            html.classList.remove('dark-mode');
+            html.classList.add('light-mode');
+        }
+    </script>
 </body>
 </html>

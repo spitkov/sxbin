@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en" class="dark-mode">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Folder Content</title>
+    <style>
+        /* Copy the entire style section from content.html */
+        /* ... */
+        .file-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .file-list li {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Folder: {{ current_folder }}</h1>
+        <div class="button-container">
+            <a href="{{ download_all_url }}"><button>Download All</button></a>
+        </div>
+        <ul class="file-list">
+            {% for file in files %}
+            <li><a href="{{ file.url }}">{{ file.name }}</a></li>
+            {% endfor %}
+        </ul>
+        <div class="button-container">
+            {% if prev_url %}
+            <a href="{{ prev_url }}"><button>Previous</button></a>
+            {% endif %}
+            {% if next_url %}
+            <a href="{{ next_url }}"><button>Next</button></a>
+            {% endif %}
+        </div>
+    </div>
+
+    <button id="theme-toggle">Toggle Theme</button>
+
+    <script>
+        // Copy the script section from content.html, but remove the copyToClipboard function
+        // ... 
+    </script>
+</body>
+</html>

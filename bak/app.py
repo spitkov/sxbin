@@ -16,9 +16,6 @@ import json
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user, login_remembered
 import hashlib
 import secrets
-import re
-from urllib.parse import urlparse
-import mimetypes
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'  # Add this line
@@ -232,19 +229,12 @@ def serve_user_page(username, filename=None):
                            parent_url=parent_url,
                            current_folder=current_folder)
 
-def is_bot(user_agent):
-    bot_patterns = [
-        r'bot', r'spider', r'crawler', r'pinterest', r'facebook', r'twitter',
-        r'slack', r'telegram', r'whatsapp', r'discord', r'embedly'
-    ]
-    return any(re.search(pattern, user_agent, re.I) for pattern in bot_patterns)
-
 @app.route('/<vanity>', methods=['GET', 'POST'])
 @app.route('/<vanity>/<password>', methods=['GET', 'POST'])
 @app.route('/<vanity>/download', methods=['GET', 'POST'])
 @app.route('/<vanity>/download/<password>', methods=['GET', 'POST'])
 @app.route('/<vanity>/raw', methods=['GET', 'POST'])
-@app.route('/<vanity>/raw/<password>', methods=['GET'])
+@app.route('/<vanity>/raw/<password>', methods=['GET', 'POST'])
 def redirect_vanity(vanity, password=None):
     app.logger.info(f"Accessing redirect_vanity: vanity={vanity}, password={password}")
     app.logger.info(f"Request path: {request.path}")
@@ -271,7 +261,6 @@ def redirect_vanity(vanity, password=None):
     
     if content:
         content_type, content_data, created_at, user_id, is_private, stored_password, username = content[1], content[2], content[3], content[4], content[5], content[6], content[7]
-        username = username if username else 'Anonymous'
         app.logger.info(f"Content found: type={content_type}, data={content_data}, is_private={is_private}")
         
         try:
@@ -287,31 +276,12 @@ def redirect_vanity(vanity, password=None):
                 entered_password = request.form.get('password')
                 if entered_password != stored_password:
                     return render_template('password_prompt.html', vanity=vanity, error="Incorrect password", content_type=content_type)
-                password = entered_password
+                password = entered_password  # Set the password for use in raw_url
             else:
                 return render_template('password_prompt.html', vanity=vanity, error=None, content_type=content_type)
         
-        if is_raw:
-            if content_type == 'pastebin':
-                return content_data, 200, {'Content-Type': 'text/plain; charset=utf-8'}
-            elif content_type == 'file':
-                file_path = os.path.join(app.config['UPLOAD_FOLDER'], content_data)
-                mime_type, _ = mimetypes.guess_type(file_path)
-                
-                # Add support for .mkv files
-                if file_path.lower().endswith('.mkv'):
-                    mime_type = 'video/x-matroska'
-                
-                return send_file(file_path, mimetype=mime_type)
-            elif content_type == 'url':
-                return content_data, 200, {'Content-Type': 'text/plain; charset=utf-8'}
-        
         if content_type == 'url':
-            user_agent = request.headers.get('User-Agent', '').lower()
-            if is_bot(user_agent):
-                return render_template('og_shorturl.html', long_url=content_data, username=username, created_at=created_at, vanity=vanity, is_private=is_private)
-            else:
-                return redirect(content_data)
+            return render_template('og_shorturl.html', long_url=content_data, username=username, created_at=created_at, vanity=vanity, is_private=is_private)
         elif content_type == 'file':
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], content_data)
             if os.path.exists(file_path):
@@ -326,6 +296,8 @@ def redirect_vanity(vanity, password=None):
                 
                 if is_download:
                     return send_file(file_path, as_attachment=True)
+                elif is_raw:
+                    return send_file(file_path)
                 else:
                     return render_template('file_info.html', 
                                            filename=content_data, 
@@ -380,11 +352,36 @@ def render_pastebin(content_data, created_at, user_id, username, vanity, is_priv
                            vanity=vanity,
                            is_private=is_private)
 
+@app.route('/<vanity>/raw', methods=['GET', 'POST'])
+@app.route('/<vanity>/raw/<password>', methods=['GET'])
+def raw_vanity(vanity, password=None):
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute("SELECT * FROM content WHERE vanity = ? AND type = 'pastebin'", (vanity,))
+    content = cursor.fetchone()
+    
+    if content:
+        content_type, content_data, created_at, user_id, is_private, stored_password = content[1], content[2], content[3], content[4], content[5], content[6]
+        
+        if is_private and stored_password:
+            if password:
+                if password != stored_password:
+                    return "Incorrect password", 403
+            elif request.method == 'POST':
+                entered_password = request.form.get('password')
+                if entered_password != stored_password:
+                    return render_template('password_prompt.html', vanity=vanity, error="Incorrect password", raw=True)
+            else:
+                return render_template('password_prompt.html', vanity=vanity, error=None, raw=True)
+        
+        # Remove '/download' from the content_data if present
+        content_data = content_data.replace('/download', '')
+        
+        return content_data, 200, {'Content-Type': 'text/plain; charset=utf-8'}
+    return 'Not Found', 404
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if current_user.is_authenticated:
-        return redirect(url_for('dashboard'))
-    
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
@@ -396,29 +393,25 @@ def login():
         if user and User.verify_password(user[2], password):
             user_obj = User(user[0], user[1], user[2], user[3])
             login_user(user_obj, remember=remember)
-            return redirect(url_for('dashboard'))
-        flash('Invalid username or password', 'error')
+            return jsonify({'success': True, 'redirect': url_for('user_files', username=username)})
+        return jsonify({'success': False, 'error': 'Invalid username or password'})
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    if current_user.is_authenticated:
-        return redirect(url_for('dashboard'))
-    
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
         
         if len(password) < 5 or not any(c.isupper() for c in password):
-            return jsonify({'success': False, 'error': 'Password does not meet requirements'}), 400
+            return jsonify({'success': False, 'error': 'Password does not meet requirements'})
         
         api_key = User.generate_api_key()
         db = get_db()
         cursor = db.cursor()
         cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
         if cursor.fetchone():
-            return jsonify({'success': False, 'error': 'Username already exists'}), 400
-        
+            return jsonify({'success': False, 'error': 'Username already exists'})
         hashed_password = User.hash_password(password)
         cursor.execute("INSERT INTO users (username, password_hash, api_key) VALUES (?, ?, ?)",
                        (username, hashed_password, api_key))
@@ -428,12 +421,7 @@ def register():
         if not os.path.exists(user_folder):
             os.makedirs(user_folder)
         
-        # Automatically log in the user
-        user = User(cursor.lastrowid, username, hashed_password, api_key)
-        login_user(user)
-        
-        return jsonify({'success': True, 'redirect': url_for('dashboard')}), 200
-    
+        return jsonify({'success': True, 'redirect': url_for('login')})
     return render_template('register.html')
 
 @app.route('/logout')
@@ -724,13 +712,7 @@ def shorten_url():
             return jsonify({'success': False, 'error': 'URL is required'}), 400
 
         long_url = data['url']
-        password = data.get('password')
-
-        # Validate the URL
-        parsed_url = urlparse(long_url)
-        if not parsed_url.scheme or not parsed_url.netloc:
-            return jsonify({'success': False, 'error': 'Invalid URL'}), 400
-
+        password = data.get('password')  # Get the password if provided
         vanity = shortuuid.uuid()[:8]
         
         user_id = current_user.id if current_user.is_authenticated else None
@@ -853,28 +835,33 @@ def content_info(vanity):
             if request.method == 'POST':
                 entered_password = request.form.get('password')
                 if entered_password != password:
-                    return render_template('password_prompt.html', vanity=vanity, error="Incorrect password", content_type=content_type)
+                    return render_template('password_prompt.html', vanity=vanity, error="Incorrect password")
             else:
-                return render_template('password_prompt.html', vanity=vanity, error=None, content_type=content_type)
+                return render_template('password_prompt.html', vanity=vanity, error=None)
         
         file_size = None
+        is_media = False
         if content_type == 'file':
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], content_data)
             if os.path.exists(file_path):
                 file_size = os.path.getsize(file_path)
+                file_extension = os.path.splitext(content_data)[1].lower()
+                is_media = file_extension in ['.jpg', '.jpeg', '.png', '.gif', '.mp3', '.wav', '.mp4', '.webm']
         
-        return render_template('content_info.html', 
-                               info={
-                                   'type': content_type,
-                                   'data': content_data,
-                                   'created_at': created_at,
-                                   'username': username or 'Anonymous',
-                                   'is_private': is_private,
-                                   'vanity': vanity,
-                                   'file_size': file_size
-                               })
+        info = {
+            'type': content_type,
+            'vanity': content_data if content_type == 'file' else vanity,
+            'data': content_data,
+            'created_at': created_at,
+            'username': username,
+            'file_size': file_size,
+            'is_media': is_media,
+            'is_private': is_private
+        }
+        
+        return render_template('content_info.html', info=info)
     
-    return "Content not found", 404
+    return render_template('404.html'), 404
 
 @app.route('/sharex-config')
 @login_required
@@ -1052,15 +1039,15 @@ def create_folder(username):
     if request.is_json:
         data = request.get_json()
         folder_name = data.get('folder_name')
-        current_path = data.get('current_path', '').strip('/')
+        subpath = data.get('subpath', '').rstrip('/')
     else:
         folder_name = request.form.get('folder_name')
-        current_path = request.form.get('current_path', '').strip('/')
+        subpath = request.form.get('subpath', '').rstrip('/')
     
     if not folder_name:
         return jsonify({'error': 'Folder name is required'}), 400
     
-    folder_path = os.path.join(app.config['UPLOAD_FOLDER'], username, current_path, folder_name)
+    folder_path = os.path.join(app.config['UPLOAD_FOLDER'], username, subpath, folder_name)
     
     if os.path.exists(folder_path):
         return jsonify({'error': 'Folder already exists'}), 400
@@ -1071,13 +1058,13 @@ def create_folder(username):
             return jsonify({'success': True, 'message': 'Folder created successfully'})
         else:
             flash(f"Folder '{folder_name}' created successfully.", 'success')
-            return redirect(url_for('user_files', username=username, subpath=current_path))
+            return redirect(url_for('user_files', username=username, subpath=subpath))
     except Exception as e:
         if request.is_json:
             return jsonify({'error': str(e)}), 500
         else:
             flash(f"Error creating folder: {str(e)}", 'error')
-            return redirect(url_for('user_files', username=username, subpath=current_path))
+            return redirect(url_for('user_files', username=username, subpath=subpath))
 
 @app.route('/dash/<username>/rename', methods=['POST'])
 @login_required
@@ -1249,47 +1236,10 @@ def reset_api_key():
 def api_docs():
     return render_template('api_docs.html')
 
-@app.route('/dash')
-@login_required
-def dashboard():
-    return redirect(url_for('user_files', username=current_user.username))
-
-@app.route('/<vanity>/raw', methods=['GET', 'POST'])
-@app.route('/<vanity>/raw/<password>', methods=['GET'])
-def raw_vanity(vanity, password=None):
-    db = get_db()
-    cursor = db.cursor()
-    cursor.execute("SELECT * FROM content WHERE vanity = ?", (vanity,))
-    content = cursor.fetchone()
-    
-    if content:
-        content_type, content_data, created_at, user_id, is_private, stored_password = content[1], content[2], content[3], content[4], content[5], content[6]
-        
-        if is_private and stored_password:
-            if password:
-                if password != stored_password:
-                    return "Incorrect password", 403
-            elif request.method == 'POST':
-                entered_password = request.form.get('password')
-                if entered_password != stored_password:
-                    return render_template('password_prompt.html', vanity=vanity, error="Incorrect password", raw=True)
-            else:
-                return render_template('password_prompt.html', vanity=vanity, error=None, raw=True)
-        
-        if content_type == 'pastebin':
-            return content_data, 200, {'Content-Type': 'text/plain; charset=utf-8'}
-        elif content_type == 'file':
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], content_data)
-            return send_file(file_path, as_attachment=True)
-        elif content_type == 'url':
-            return content_data, 200, {'Content-Type': 'text/plain; charset=utf-8'}
-    
-    return 'Not Found', 404
-
 if __name__ == '__main__':
     # Start the cleanup thread
     cleanup_thread = threading.Thread(target=delete_old_files)
     cleanup_thread.daemon = True
     cleanup_thread.start()
 
-    app.run(host='0.0.0.0', port=7122, debug=True)
+    app.run(host='0.0.0.0', port=7123, debug=True)

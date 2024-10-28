@@ -101,15 +101,6 @@
         .edit-btn:hover, .delete-btn:hover {
             background-color: #d32f2f;
         }
-        .media-container {
-            max-width: 100%;
-            margin-top: 20px;
-        }
-        .media-container img,
-        .media-container video {
-            max-width: 100%;
-            height: auto;
-        }
     </style>
 </head>
 <body>
@@ -121,18 +112,15 @@
         <div class="info-item"><strong>Date:</strong> {{ created_at.strftime('%Y-%m-%d %H:%M:%S') }}</div>
         <div class="info-item"><strong>File type:</strong> {{ filename.split('.')[-1].upper() if '.' in filename else 'Unknown' }}</div>
         
-        <div class="media-container">
+        {% if is_embeddable %}
+        <div class="embed-container">
             {% if filename.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.svg')) %}
-                <img src="{{ raw_url }}" alt="{{ filename }}">
-            {% elif filename.lower().endswith(('.mp4', '.webm', '.ogg', '.mkv')) %}
-                <video controls>
-                    <source src="{{ raw_url }}" type="video/{{ filename.split('.')[-1] }}">
-                    Your browser does not support the video tag.
-                </video>
+            <img src="{{ raw_url }}" alt="{{ filename }}">
             {% elif filename.lower().endswith('.pdf') %}
-                <embed src="{{ raw_url }}" type="application/pdf" width="100%" height="600px">
+            <embed src="{{ raw_url }}" type="application/pdf" width="100%" height="600px">
             {% endif %}
         </div>
+        {% endif %}
         
         <div class="btn-container">
             <a href="{{ file_url }}/download{% if password %}/{{ password }}{% endif %}" class="btn">Download</a>

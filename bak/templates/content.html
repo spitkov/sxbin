@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en" class="dark-mode">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Content</title>
+    <style>
+        :root {
+            --bg-color: #1e1e1e;
+            --text-color: #e0e0e0;
+            --highlight-bg: #2d2d2d;
+            --highlight-border: #444;
+            --button-bg: #3a3a3a;
+            --button-text: #e0e0e0;
+        }
+
+        .light-mode {
+            --bg-color: #ffffff;
+            --text-color: #333333;
+            --highlight-bg: #f8f8f8;
+            --highlight-border: #ccc;
+            --button-bg: #f0f0f0;
+            --button-text: #333333;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        .button-container {
+            margin-bottom: 20px;
+        }
+
+        button {
+            background-color: var(--button-bg);
+            color: var(--button-text);
+            border: none;
+            padding: 10px 15px;
+            margin-right: 10px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            opacity: 0.8;
+        }
+
+        .highlight {
+            background-color: var(--highlight-bg);
+            border: 1px solid var(--highlight-border);
+            border-radius: 4px;
+            padding: 1em;
+            overflow: auto;
+        }
+
+        #theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+        }
+
+        a {
+            color: var(--text-color);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        /* Ensure proper contrast for syntax highlighting */
+        .highlight pre {
+            color: var(--text-color);
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        /* Override Pygments styles for dark mode */
+        .dark-mode .highlight .hll { background-color: #49483e }
+        .dark-mode .highlight .c { color: #75715e } /* Comment */
+        .dark-mode .highlight .err { color: #960050; background-color: #1e0010 } /* Error */
+        .dark-mode .highlight .k { color: #66d9ef } /* Keyword */
+        .dark-mode .highlight .l { color: #ae81ff } /* Literal */
+        .dark-mode .highlight .n { color: #f8f8f2 } /* Name */
+        .dark-mode .highlight .o { color: #f92672 } /* Operator */
+        .dark-mode .highlight .p { color: #f8f8f2 } /* Punctuation */
+        .dark-mode .highlight .cm { color: #75715e } /* Comment.Multiline */
+        .dark-mode .highlight .cp { color: #75715e } /* Comment.Preproc */
+        .dark-mode .highlight .c1 { color: #75715e } /* Comment.Single */
+        .dark-mode .highlight .cs { color: #75715e } /* Comment.Special */
+        .dark-mode .highlight .ge { font-style: italic } /* Generic.Emph */
+        .dark-mode .highlight .gs { font-weight: bold } /* Generic.Strong */
+        .dark-mode .highlight .kc { color: #66d9ef } /* Keyword.Constant */
+        .dark-mode .highlight .kd { color: #66d9ef } /* Keyword.Declaration */
+        .dark-mode .highlight .kn { color: #f92672 } /* Keyword.Namespace */
+        .dark-mode .highlight .kp { color: #66d9ef } /* Keyword.Pseudo */
+        .dark-mode .highlight .kr { color: #66d9ef } /* Keyword.Reserved */
+        .dark-mode .highlight .kt { color: #66d9ef } /* Keyword.Type */
+        .dark-mode .highlight .ld { color: #e6db74 } /* Literal.Date */
+        .dark-mode .highlight .m { color: #ae81ff } /* Literal.Number */
+        .dark-mode .highlight .s { color: #e6db74 } /* Literal.String */
+        .dark-mode .highlight .na { color: #a6e22e } /* Name.Attribute */
+        .dark-mode .highlight .nb { color: #f8f8f2 } /* Name.Builtin */
+        .dark-mode .highlight .nc { color: #a6e22e } /* Name.Class */
+        .dark-mode .highlight .no { color: #66d9ef } /* Name.Constant */
+        .dark-mode .highlight .nd { color: #a6e22e } /* Name.Decorator */
+        .dark-mode .highlight .ni { color: #f8f8f2 } /* Name.Entity */
+        .dark-mode .highlight .ne { color: #a6e22e } /* Name.Exception */
+        .dark-mode .highlight .nf { color: #a6e22e } /* Name.Function */
+        .dark-mode .highlight .nl { color: #f8f8f2 } /* Name.Label */
+        .dark-mode .highlight .nn { color: #f8f8f2 } /* Name.Namespace */
+        .dark-mode .highlight .nx { color: #a6e22e } /* Name.Other */
+        .dark-mode .highlight .py { color: #f8f8f2 } /* Name.Property */
+        .dark-mode .highlight .nt { color: #f92672 } /* Name.Tag */
+        .dark-mode .highlight .nv { color: #f8f8f2 } /* Name.Variable */
+        .dark-mode .highlight .ow { color: #f92672 } /* Operator.Word */
+        .dark-mode .highlight .w { color: #f8f8f2 } /* Text.Whitespace */
+        .dark-mode .highlight .mf { color: #ae81ff } /* Literal.Number.Float */
+        .dark-mode .highlight .mh { color: #ae81ff } /* Literal.Number.Hex */
+        .dark-mode .highlight .mi { color: #ae81ff } /* Literal.Number.Integer */
+        .dark-mode .highlight .mo { color: #ae81ff } /* Literal.Number.Oct */
+        .dark-mode .highlight .sb { color: #e6db74 } /* Literal.String.Backtick */
+        .dark-mode .highlight .sc { color: #e6db74 } /* Literal.String.Char */
+        .dark-mode .highlight .sd { color: #e6db74 } /* Literal.String.Doc */
+        .dark-mode .highlight .s2 { color: #e6db74 } /* Literal.String.Double */
+        .dark-mode .highlight .se { color: #ae81ff } /* Literal.String.Escape */
+        .dark-mode .highlight .sh { color: #e6db74 } /* Literal.String.Heredoc */
+        .dark-mode .highlight .si { color: #e6db74 } /* Literal.String.Interpol */
+        .dark-mode .highlight .sx { color: #e6db74 } /* Literal.String.Other */
+        .dark-mode .highlight .sr { color: #e6db74 } /* Literal.String.Regex */
+        .dark-mode .highlight .s1 { color: #e6db74 } /* Literal.String.Single */
+        .dark-mode .highlight .ss { color: #e6db74 } /* Literal.String.Symbol */
+        .dark-mode .highlight .bp { color: #f8f8f2 } /* Name.Builtin.Pseudo */
+        .dark-mode .highlight .vc { color: #f8f8f2 } /* Name.Variable.Class */
+        .dark-mode .highlight .vg { color: #f8f8f2 } /* Name.Variable.Global */
+        .dark-mode .highlight .vi { color: #f8f8f2 } /* Name.Variable.Instance */
+        .dark-mode .highlight .il { color: #ae81ff } /* Literal.Number.Integer.Long */
+
+        {{ css|safe }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Content</h2>
+        {% if content %}
+        <p>Uploaded by: {{ 'Anonymous' if content.username == 'None' else content.username }}</p>
+            <p>Created at: {{ content.created_at }}</p>
+            
+            {% if highlighted_content %}
+                <style>{{ css|safe }}</style>
+                <div class="highlight">
+                    {{ highlighted_content|safe }}
+                </div>
+                <button onclick="copyToClipboard()" class="btn">Copy</button>
+                <a href="{{ url_for('raw_vanity', vanity=content.vanity) }}" class="btn">View Raw</a>
+                {% if current_user.is_authenticated and current_user.id == content.user_id %}
+                    <a href="{{ url_for('edit_content', vanity=content.vanity) }}" class="btn">Edit</a>
+                {% endif %}
+            {% elif url %}
+                <p>Shortened URL: <a href="{{ url }}">{{ url }}</a></p>
+                <button onclick="copyToClipboard()" class="btn">Copy URL</button>
+            {% elif raw_content %}
+                <pre style="white-space: pre-wrap; word-wrap: break-word;">{{ raw_content }}</pre>
+                <button onclick="copyToClipboard()" class="btn">Copy</button>
+                <a href="{{ url_for('raw_vanity', vanity=content.vanity) }}" class="btn">View Raw</a>
+                {% if current_user.is_authenticated and current_user.id == content.user_id %}
+                    <a href="{{ url_for('edit_content', vanity=content.vanity) }}" class="btn">Edit</a>
+                {% endif %}
+            {% else %}
+                <p>No content available</p>
+            {% endif %}
+            
+            {% if current_user.is_authenticated and current_user.id == content.user_id %}
+                <form action="{{ url_for('delete_content', vanity=content.vanity) }}" method="post" style="display: inline;">
+                    <button type="submit" class="btn">Delete</button>
+                </form>
+            {% endif %}
+        {% else %}
+            <p>No content found.</p>
+        {% endif %}
+    </div>
+
+    <button id="theme-toggle">Toggle Theme</button>
+
+    <script>
+        const rawContent = {{ raw_content|tojson|default('null') }};
+        const url = {{ url|tojson|default('null') }};
+
+        function copyToClipboard() {
+            let textToCopy = rawContent;
+            if (url) {
+                textToCopy = url;
+            }
+            if (textToCopy) {
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    alert('Copied to clipboard!');
+                }).catch(err => {
+                    console.error('Failed to copy text: ', err);
+                });
+            } else {
+                console.error('No content to copy');
+            }
+        }
+
+        const themeToggle = document.getElementById('theme-toggle');
+        const html = document.documentElement;
+
+        function toggleTheme() {
+            html.classList.toggle('light-mode');
+            localStorage.setItem('lightMode', html.classList.contains('light-mode'));
+        }
+
+        themeToggle.addEventListener('click', toggleTheme);
+
+        // Check for saved theme preference
+        if (localStorage.getItem('lightMode') === 'true') {
+            html.classList.add('light-mode');
+        }
+    </script>
+</body>
+</html>

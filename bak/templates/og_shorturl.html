@@ -10,37 +10,15 @@
     <meta property="og:description" content="Shortened URL {% if is_private %}(Password Protected){% endif %} | Created by: {{ username }} | Date: {{ created_at.strftime('%Y-%m-%d %H:%M:%S') }}">
     <meta property="og:site_name" content="sxbin">
     <meta property="theme-color" content="#4CAF50">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .btn {
-            display: inline-block;
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px 20px;
-            text-decoration: none;
-            border-radius: 5px;
-            margin-top: 20px;
-        }
-        .btn:hover {
-            background-color: #45a049;
-        }
-    </style>
 </head>
 <body>
     <h1>Shortened URL</h1>
     <p>Original URL: {{ long_url }}</p>
-    <p>Uploaded by: {{ username }}</p>
+    <p>Created by: {{ username }}</p>
     <p>Date: {{ created_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
     {% if is_private %}
         <p>This URL is password protected.</p>
     {% endif %}
-    <a href="{{ long_url }}" class="btn">Go to URL</a>
+    <a href="{{ url_for('redirect_vanity', vanity=vanity) }}">Access the URL</a>
 </body>
 </html>
