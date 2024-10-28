@@ -930,9 +930,6 @@
                             <a href="#" onclick="showModal('move', '{{ item.name }}', '{{ item.type }}')">Move</a>
                             <a href="#" onclick="showModal('copy', '{{ item.name }}', '{{ item.type }}')">Copy</a>
                             <a href="#" onclick="deleteItem('{{ item.name }}', '{{ item.type }}')">Delete</a>
-                            {% if item.type == 'file' %}
-                                <a href="{{ url_for('edit_file', username=username, filename=item.path) }}">Edit</a>
-                            {% endif %}
                         </div>
                     </div>
                 </li>
@@ -966,11 +963,6 @@
                             <button class="dropbtn">•••</button>
                             <div class="dropdown-content">
                                 <a href="{{ url_for('content_info', vanity=upload.vanity) }}">Info</a>
-                                {% if upload.type == 'url' %}
-                                    <a href="#" onclick="editUrl('{{ upload.vanity }}', '{{ upload.data }}')">Edit</a>
-                                {% else %}
-                                    <a href="{{ url_for('edit_content', vanity=upload.vanity) }}">Edit</a>
-                                {% endif %}
                                 <a href="#" onclick="deleteUpload('{{ upload.vanity }}')">Delete</a>
                                 {% if upload.is_private %}
                                     <a href="#" onclick="openEditPasswordModal('{{ upload.vanity }}')">Edit Password</a>
@@ -1869,32 +1861,6 @@
             form.submit();
         }
 
-        function editUrl(vanity, currentUrl) {
-            const newUrl = prompt("Enter the new URL:", currentUrl);
-            if (newUrl && newUrl !== currentUrl) {
-                fetch('/edit/content/' + vanity, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ content: newUrl }),
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('URL updated successfully');
-                        location.reload();
-                    } else {
-                        alert('Error updating URL: ' + data.error);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('An error occurred while updating the URL');
-                });
-            }
-        }
-
         document.getElementById('ignoreIndexCheckbox').addEventListener('change', function() {
             fetch("{{ url_for('toggle_index', username=username) }}", {
                 method: 'POST',
@@ -2255,7 +2221,6 @@
                         <a href="#" onclick="showModal('move', '${fileName}', 'file')">Move</a>
                         <a href="#" onclick="showModal('copy', '${fileName}', 'file')">Copy</a>
                         <a href="#" onclick="deleteItem('${fileName}', 'file')">Delete</a>
-                        <a href="{{ url_for('edit_file', username=username, filename='') }}${fileName}">Edit</a>
                     </div>
                 </div>
             `;

@@ -752,36 +752,11 @@ def shorten_url():
         print("Exception occurred:", str(e))
         return jsonify({'success': False, 'error': str(e)}), 400
 
-@app.route('/edit/content/<vanity>', methods=['GET', 'POST'])
-@login_required
-def edit_content(vanity):
-    db = get_db()
-    cursor = db.cursor()
-    cursor.execute("SELECT * FROM content WHERE vanity = ? OR data LIKE ?", (vanity, f"{vanity}%"))
-    content = cursor.fetchone()
-
-    if not content or content[4] != current_user.id:
-        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
-
-    content_type, content_data = content[1], content[2]
-
-    if request.method == 'POST':
-        new_content = request.form.get('content')
-        if new_content is not None:
-            cursor.execute("UPDATE content SET data = ? WHERE vanity = ?", (new_content, content[0]))
-            db.commit()
-            return redirect(url_for('redirect_vanity', vanity=content[0].replace('/raw', '')))
-
-    if content_type == 'file':
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], content_data)
-        if os.path.exists(file_path):
-            with open(file_path, 'r') as file:
-                file_content = file.read()
-            return render_template('edit_content.html', content=file_content, vanity=content[0], content_type=content_type)
-    elif content_type == 'pastebin':
-        return render_template('edit_content.html', content=content_data, vanity=content[0], content_type=content_type)
-
-    return jsonify({'success': False, 'error': 'Unsupported content type for editing'}), 400
+# Remove or comment out the edit_content route
+# @app.route('/edit/content/<vanity>', methods=['GET', 'POST'])
+# @login_required
+# def edit_content(vanity):
+#     ... (remove entire route)
 
 @app.route('/edit_password/<vanity>', methods=['POST'])
 @login_required
@@ -1037,117 +1012,76 @@ def rename_user_file(username):
 @app.route('/upload/file', methods=['POST'])
 def upload_file():
     app.logger.info("Starting upload_file function")
-    app.logger.info("Code: if 'file' not in request.files:")
+    
+    # Check for API key in headers
+    api_key = request.headers.get('X-API-Key')
+    user_id = None
+    
+    if api_key:
+        # If API key is provided, get user from database
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute("SELECT id FROM users WHERE api_key = ?", (api_key,))
+        user = cursor.fetchone()
+        if user:
+            user_id = user[0]
+    elif current_user.is_authenticated:
+        # If no API key but user is logged in via web
+        user_id = current_user.id
+    
+    app.logger.info(f"User ID determined: {user_id}")
+    
     if 'file' not in request.files:
         app.logger.error("No file part in the request")
         return jsonify({'success': False, 'error': 'No file part'}), 400
     
-    app.logger.info("Code: file = request.files['file']")
+    # Rest of your existing upload_file code...
     file = request.files['file']
-    app.logger.info(f"File object: {file}")
-    
-    app.logger.info("Code: if file.filename == '':")
     if file.filename == '':
         app.logger.error("No selected file")
         return jsonify({'success': False, 'error': 'No selected file'}), 400
     
-    app.logger.info("Code: if file:")
     if file:
         try:
             app.logger.info(f"Processing file: {file.filename}")
-            
-            app.logger.info("Code: filename = secure_filename(file.filename)")
             filename = secure_filename(file.filename)
-            app.logger.info(f"Secure filename: {filename}")
-            
-            app.logger.info("Code: extension = os.path.splitext(filename)[1].lower()")
             extension = os.path.splitext(filename)[1].lower()
-            app.logger.info(f"File extension: {extension}")
-            
-            app.logger.info("Code: vanity = shortuuid.uuid()[:8]")
             vanity = shortuuid.uuid()[:8]
-            app.logger.info(f"Generated vanity: {vanity}")
-            
-            app.logger.info("Code: vanity_with_extension = f'{vanity}{extension}'")
             vanity_with_extension = f"{vanity}{extension}"
-            app.logger.info(f"Vanity with extension: {vanity_with_extension}")
-            
-            app.logger.info("Code: new_filename = vanity_with_extension")
             new_filename = vanity_with_extension
-            app.logger.info(f"New filename: {new_filename}")
-            
-            app.logger.info("Code: file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], new_filename)")
             file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], new_filename)
-            app.logger.info(f"File path: {file_path}")
             
-            app.logger.info("Code: file.save(file_path)")
             file.save(file_path)
             app.logger.info("File saved successfully")
             
-            app.logger.info("Code: user_id = current_user.id if current_user.is_authenticated else None")
-            user_id = current_user.id if current_user.is_authenticated else None
-            app.logger.info(f"User ID: {user_id}")
-            
-            app.logger.info("Code: password = request.form.get('password')")
             password = request.form.get('password')
-            app.logger.info(f"Password: {'Set' if password else 'Not set'}")
-            
-            app.logger.info("Code: is_private = 1 if password else 0")
             is_private = 1 if password else 0
-            app.logger.info(f"Is private: {is_private}")
             
-            app.logger.info("Code: db = get_db()")
             db = get_db()
-            app.logger.info("Database connection established")
-            
-            app.logger.info("Code: cursor = db.cursor()")
             cursor = db.cursor()
-            app.logger.info("Database cursor created")
             
-            app.logger.info("Inserting file info into database")
-            app.logger.info("Code: vanity_for_db = vanity_with_extension")
-            vanity_for_db = vanity_with_extension
-            app.logger.info(f"Vanity for DB: {vanity_for_db}")
+            # Use the determined user_id in the database insert
+            cursor.execute("""
+                INSERT INTO content (vanity, type, data, created_at, user_id, is_private, password) 
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (vanity_with_extension, 'file', new_filename, datetime.now(), user_id, is_private, password))
             
-            app.logger.info("Code: cursor.execute(...)")
-            cursor.execute("INSERT INTO content (vanity, type, data, created_at, user_id, is_private, password) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                           (vanity_for_db, 'file', new_filename, datetime.now(), user_id, is_private, password))
-            app.logger.info("SQL query executed")
-            
-            app.logger.info("Code: db.commit()")
             db.commit()
-            app.logger.info("Database changes committed")
             
-            app.logger.info("Code: scheme = 'https' if request.is_secure else 'http'")
             scheme = 'https' if request.is_secure else 'http'
-            app.logger.info(f"Using scheme: {scheme}")
-            
-            app.logger.info("Generating URLs")
-            app.logger.info("Code: short_url = url_for('redirect_vanity', vanity=vanity_with_extension, _external=True, _scheme=scheme)")
             short_url = f"{scheme}://{request.host}/{vanity_with_extension}"
-            app.logger.info(f"Generated short URL: {short_url}")
-            
-            app.logger.info("Code: download_url = short_url + '/download'")
             download_url = f"{short_url}/download"
-            app.logger.info(f"Generated download URL: {download_url}")
             
-            app.logger.info("Code: deletion_url = url_for('delete_content', vanity=vanity_with_extension, _external=True, _scheme=scheme)")
-            deletion_url = url_for('delete_content', vanity=vanity_with_extension, _external=True, _scheme=scheme)
-            app.logger.info(f"Generated deletion URL: {deletion_url}")
-            
-            app.logger.info("Preparing JSON response")
             response_data = {
                 'success': True,
                 'vanity': vanity_with_extension,
-                'url': short_url,  # Remove /raw since ShareX will add it
-                'download_url': download_url,  # Remove /raw since ShareX will add it
-                # Removed deletion_url from response
+                'url': short_url,
+                'download_url': download_url,
                 'filename': new_filename
             }
-            app.logger.info(f"Response data: {response_data}")
             
             return jsonify(response_data)
-        
+            
         except Exception as e:
             app.logger.error(f"Error uploading file: {str(e)}")
             app.logger.exception("Exception traceback:")
