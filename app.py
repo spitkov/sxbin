@@ -770,7 +770,7 @@ def edit_content(vanity):
         if new_content is not None:
             cursor.execute("UPDATE content SET data = ? WHERE vanity = ?", (new_content, content[0]))
             db.commit()
-            return redirect(url_for('redirect_vanity', vanity=content[0]))
+            return redirect(url_for('redirect_vanity', vanity=content[0].replace('/raw', '')))
 
     if content_type == 'file':
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], content_data)
@@ -809,27 +809,42 @@ def edit_password(vanity):
     db.commit()
     return jsonify({'success': True})
 
-@app.route('/delete/content/<vanity>', methods=['POST'])
+@app.route('/<vanity>/delete', methods=['POST'])
 @login_required
 def delete_content(vanity):
     db = get_db()
     cursor = db.cursor()
-    cursor.execute("SELECT * FROM content WHERE vanity = ? OR data LIKE ?", (vanity, f"{vanity}%"))
+    cursor.execute("SELECT type, data, user_id FROM content WHERE vanity = ?", (vanity,))
     content = cursor.fetchone()
-
-    if not content or content[4] != current_user.id:
-        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
-
-    cursor.execute("DELETE FROM content WHERE vanity = ? OR data LIKE ?", (vanity, f"{vanity}%"))
-    db.commit()
-
-    # If it's a file, delete the actual file from the filesystem
-    if content[1] == 'file':
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], content[2])
-        if os.path.exists(file_path):
-            os.remove(file_path)
-
-    return jsonify({'success': True}), 200
+    
+    if content and (content[2] == current_user.id):
+        content_type, data = content[0], content[1]
+        
+        if content_type == 'file':
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], data)
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        elif content_type == 'folder':
+            folder_path = os.path.join(app.config['UPLOAD_FOLDER'], vanity)
+            if os.path.exists(folder_path):
+                shutil.rmtree(folder_path)
+        
+        cursor.execute("DELETE FROM content WHERE vanity = ?", (vanity,))
+        db.commit()
+        
+        # Check if request is AJAX
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': True, 'message': 'Content deleted successfully'})
+        else:
+            # For regular form submissions, redirect to homepage
+            flash('Content deleted successfully', 'success')
+            return redirect(url_for('index'))
+    
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'success': False, 'message': 'Not authorized or content not found'}), 403
+    else:
+        flash('Not authorized or content not found', 'error')
+        return redirect(url_for('index'))
 
 @app.route('/<vanity>/info', methods=['GET', 'POST'])
 def content_info(vanity):
@@ -885,14 +900,12 @@ def generate_sharex_config():
         "Name": "sxbin",
         "DestinationType": "ImageUploader, TextUploader, FileUploader, URLShortener",
         "RequestMethod": "POST",
-        "RequestURL": f"{base_url}/api/upload",
+        "RequestURL": f"{base_url}/upload/file",  # Changed from /api/upload to /upload/file
         "Headers": {
             "X-API-Key": current_user.api_key
         },
         "Body": "MultipartFormData",
         "FileFormName": "file",
-        "TextFormName": "text",
-        "URLShortenerFormName": "url",
         "URL": "$json:url$",
         "DeletionURL": "$json:deletion_url$"
     }
@@ -901,93 +914,6 @@ def generate_sharex_config():
     response.headers.set('Content-Type', 'application/json')
     response.headers.set('Content-Disposition', 'attachment', filename='sxbin_ShareX.sxcu')
     return response
-
-@app.route('/api/upload', methods=['POST'])
-def api_upload():
-    api_key = request.headers.get('X-API-Key')
-    if not api_key:
-        return jsonify({'error': 'API key is missing'}), 401
-
-    db = get_db()
-    cursor = db.cursor()
-    cursor.execute("SELECT * FROM users WHERE api_key = ?", (api_key,))
-    user = cursor.fetchone()
-
-    if not user:
-        return jsonify({'error': 'Invalid API key'}), 401
-
-    if 'file' in request.files:
-        file = request.files['file']
-        if file.filename == '':
-            return jsonify({'error': 'No selected file'}), 400
-        if file:
-            filename = secure_filename(file.filename)
-            extension = os.path.splitext(filename)[1].lower()
-            
-            if extension == '.txt':
-                # Handle text files as pastebins
-                content = file.read().decode('utf-8')
-                vanity = shortuuid.uuid()[:8]
-                
-                cursor.execute("INSERT INTO content (vanity, type, data, created_at, user_id) VALUES (?, ?, ?, ?, ?)",
-                               (vanity, 'pastebin', content, datetime.now(), user[0]))
-                db.commit()
-                
-                url = url_for('redirect_vanity', vanity=vanity, _external=True, _scheme='https')
-                delete_url = url_for('delete_content', vanity=vanity, _external=True, _scheme='https')
-            else:
-                # Handle other file types
-                vanity = shortuuid.uuid()[:8]
-                new_filename = f"{vanity}{extension}"
-                file_path = os.path.join(app.config['UPLOAD_FOLDER'], new_filename)
-                file.save(file_path)
-                
-                cursor.execute("INSERT INTO content (vanity, type, data, created_at, user_id) VALUES (?, ?, ?, ?, ?)",
-                               (vanity, 'file', new_filename, datetime.now(), user[0]))
-                db.commit()
-                
-                url = url_for('redirect_vanity', vanity=new_filename, _external=True, _scheme='https')
-                delete_url = url_for('delete_content', vanity=new_filename, _external=True, _scheme='https')
-            
-            return json.dumps({
-                'status': 'success',
-                'url': url.replace('/download', ''),
-                'deletion_url': delete_url,
-            })
-    elif 'text' in request.form:
-        content = request.form['text']
-        vanity = shortuuid.uuid()[:8]
-        
-        cursor.execute("INSERT INTO content (vanity, type, data, created_at, user_id) VALUES (?, ?, ?, ?, ?)",
-                       (vanity, 'pastebin', content, datetime.now(), user[0]))
-        db.commit()
-        
-        url = url_for('redirect_vanity', vanity=vanity, _external=True, _scheme='https')
-        delete_url = url_for('delete_content', vanity=vanity, _external=True, _scheme='https')
-        
-        return json.dumps({
-            'status': 'success',
-            'url': url.replace('/download', ''),
-            'deletion_url': delete_url,
-        })
-    elif 'url' in request.form:
-        long_url = request.form['url']
-        vanity = shortuuid.uuid()[:8]
-        
-        cursor.execute("INSERT INTO content (vanity, type, data, created_at, user_id) VALUES (?, ?, ?, ?, ?)",
-                       (vanity, 'url', long_url, datetime.now(), user[0]))
-        db.commit()
-        
-        short_url = url_for('redirect_vanity', vanity=vanity, _external=True, _scheme='https')
-        delete_url = url_for('delete_content', vanity=vanity, _external=True, _scheme='https')
-        
-        return json.dumps({
-            'status': 'success',
-            'url': short_url.replace('/download', ''),
-            'deletion_url': delete_url,
-        })
-
-    return jsonify({'error': 'No file, text, or URL content provided'}), 400
 
 @app.route('/dash/<username>/create_new_file', methods=['POST'])
 @login_required
@@ -1213,9 +1139,9 @@ def upload_file():
             response_data = {
                 'success': True,
                 'vanity': vanity_with_extension,
-                'url': short_url,
-                'download_url': download_url,
-                'deletion_url': deletion_url,
+                'url': short_url,  # Remove /raw since ShareX will add it
+                'download_url': download_url,  # Remove /raw since ShareX will add it
+                # Removed deletion_url from response
                 'filename': new_filename
             }
             app.logger.info(f"Response data: {response_data}")

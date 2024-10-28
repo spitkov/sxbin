@@ -20,24 +20,19 @@
             --button-text: #e0e0e0;
         }
 
-        .light-mode {
-            --bg-color: #ffffff;
-            --text-color: #333333;
-            --highlight-bg: #f8f8f8;
-            --highlight-border: #ccc;
-            --button-bg: #f0f0f0;
-            --button-text: #333333;
-        }
-
         body {
             font-family: Arial, sans-serif;
             line-height: 1.6;
             color: var(--text-color);
             background-color: var(--bg-color);
-            transition: background-color 0.3s, color 0.3s;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
 
         .container {
+            flex: 1;
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
@@ -99,18 +94,21 @@
             padding-left: 10px;
         }
 
-        #theme-toggle {
-            position: fixed;
-            top: 20px;
-            right: 20px;
+        footer {
+            text-align: center;
+            padding: 10px;
+            background-color: #2a2a2a;
+            color: #f0f0f0;
+            width: 100%;
+            margin-top: auto;
         }
 
-        a {
-            color: var(--text-color);
+        footer a {
+            color: #4CAF50;
             text-decoration: none;
         }
 
-        a:hover {
+        footer a:hover {
             text-decoration: underline;
         }
 
@@ -121,8 +119,8 @@
         }
 
         .btn {
-            background-color: var(--button-bg);
-            color: var(--button-text);
+            background-color: #4CAF50;  /* Green color */
+            color: white;
             border: none;
             padding: 10px 15px;
             cursor: pointer;
@@ -133,19 +131,25 @@
             flex: 1;
             text-align: center;
             font-size: 14px;
+            min-width: 100px;  /* Ensure minimum width */
+            margin: 0 5px;     /* Even spacing */
         }
 
         .btn:hover {
-            opacity: 0.8;
+            background-color: #45a049;  /* Darker green on hover */
+            opacity: 0.9;
+            text-decoration: none;
         }
 
         form {
             flex: 1;
             display: flex;
+            margin: 0 5px;
         }
 
         form .btn {
             width: 100%;
+            margin: 0;
         }
 
         .home-button {
@@ -195,20 +199,24 @@
         }
         .modal-buttons {
             display: flex;
-            justify-content: flex-end;
+            justify-content: space-between;
             gap: 10px;
             margin-top: 15px;
+        }
+        .modal-buttons .btn {
+            flex: 1;
+            margin: 0;
         }
         .btn-ok {
             background-color: #4CAF50;
             color: white;
         }
         .btn-cancel {
-            background-color: #888;
+            background-color: #4CAF50;
             color: white;
         }
         .btn-remove {
-            background-color: #f44336;
+            background-color: #4CAF50;
             color: white;
         }
     </style>
@@ -240,9 +248,7 @@
         </div>
     </div>
 
-    <button id="theme-toggle">Toggle Theme</button>
-
-    <footer style="text-align: center; margin-top: 20px; padding: 10px; background-color: #2a2a2a; color: #f0f0f0;">
+    <footer>
         <p>
             Source code: <a href="https://git.spitkov.hu/cgcristi/aCloud" target="_blank">Spitkov's Git</a> | 
             <a href="https://office.bence.lol/form/#/2/form/view/z5Cf3CL6tZtPjzKsbcEPync6JE3iyMl22h6thUQg1a4/" target="_blank">Suggestions & Bugs</a> | 
@@ -273,21 +279,6 @@
             }).catch(err => {
                 console.error('Failed to copy text: ', err);
             });
-        }
-
-        const themeToggle = document.getElementById('theme-toggle');
-        const html = document.documentElement;
-
-        function toggleTheme() {
-            html.classList.toggle('light-mode');
-            localStorage.setItem('lightMode', html.classList.contains('light-mode'));
-        }
-
-        themeToggle.addEventListener('click', toggleTheme);
-
-        // Check for saved theme preference
-        if (localStorage.getItem('lightMode') === 'true') {
-            html.classList.add('light-mode');
         }
 
         let currentVanity = '{{ vanity }}';

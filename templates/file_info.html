@@ -45,26 +45,62 @@
         }
         .btn-container {
             display: flex;
-            flex-wrap: wrap;
             gap: 10px;
             margin-top: 20px;
+            justify-content: space-between;
         }
         .btn {
             background-color: #4CAF50;
             color: white;
             border: none;
-            padding: 10px 15px;
+            padding: 8px 12px;
             text-align: center;
             text-decoration: none;
             display: inline-block;
             font-size: 14px;
-            margin: 4px 2px;
             cursor: pointer;
             border-radius: 4px;
             transition: background-color 0.3s;
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-width: 0;
+            box-sizing: border-box;
         }
         .btn:hover {
             background-color: #45a049;
+        }
+        form {
+            flex: 1;
+            display: flex;
+            margin: 0;
+            min-width: 0;
+        }
+        form .btn {
+            width: 100%;
+            margin: 0;
+            flex: 1;
+            min-width: 0;  /* Allow button to shrink */
+            flex-basis: 0;  /* Force equal width */
+        }
+        .delete-btn {
+            background-color: #f44336 !important;
+            width: 100%;
+            flex: 1;
+            min-width: 0;  /* Allow button to shrink */
+            flex-basis: 0;  /* Force equal width */
+        }
+        .delete-btn:hover {
+            background-color: #d32f2f !important;
+        }
+        /* Add this to ensure anchor buttons behave the same */
+        a.btn {
+            box-sizing: border-box;
+            margin: 0;
+            flex: 1;
+            min-width: 0;  /* Allow button to shrink */
+            flex-basis: 0;  /* Force equal width */
         }
         .home-button {
             position: fixed;
@@ -95,12 +131,7 @@
             background-color: #2a2a2a;
             color: #f0f0f0;
         }
-        .edit-btn, .delete-btn {
-            background-color: #f44336;
-        }
-        .edit-btn:hover, .delete-btn:hover {
-            background-color: #d32f2f;
-        }
+
         .media-container {
             max-width: 100%;
             margin-top: 20px;
@@ -109,6 +140,36 @@
         .media-container video {
             max-width: 100%;
             height: auto;
+        }
+
+        /* Add these styles for the modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        .modal-content {
+            background-color: #1e1e1e;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #4CAF50;
+            border-radius: 5px;
+            width: 300px;
+            text-align: center;
+        }
+        .modal-message {
+            margin-bottom: 20px;
+            color: #e0e0e0;
+        }
+        .modal-icon {
+            font-size: 48px;
+            color: #4CAF50;
+            margin-bottom: 20px;
         }
     </style>
 </head>
@@ -139,9 +200,9 @@
             <a href="{{ raw_url }}" class="btn">View Raw</a>
             {% if current_user.is_authenticated and current_user.id == user_id %}
                 {% if filename.lower().endswith(('.txt', '.html', '.css', '.js', '.py', '.md')) or '.' not in filename %}
-                <a href="{{ url_for('edit_content', vanity=vanity) }}" class="btn edit-btn">Edit</a>
+                <a href="{{ url_for('edit_content', vanity=vanity) }}" class="btn">Edit</a>
                 {% endif %}
-                <form action="{{ url_for('delete_content', vanity=vanity) }}" method="post" style="display: inline;">
+                <form action="{{ url_for('delete_content', vanity=vanity) }}" method="post" >
                     <button type="submit" class="btn delete-btn" onclick="return confirm('Are you sure you want to delete this file?')">Delete</button>
                 </form>
             {% endif %}
@@ -158,6 +219,14 @@
         </p>
     </footer>
 
+    <!-- Add the modal HTML outside of the script tag -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-icon">✓</div>
+            <div class="modal-message">Content deleted successfully!</div>
+        </div>
+    </div>
+
     <script>
         const themeToggle = document.getElementById('theme-toggle');
         const body = document.body;
@@ -172,6 +241,40 @@
         if (savedTheme === 'light') {
             body.classList.add('light-mode');
         }
+
+        // Update the delete form to use AJAX
+        document.querySelector('form[action*="delete_content"]').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (confirm('Are you sure you want to delete this file?')) {
+                fetch(this.action, {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Show the modal
+                        const modal = document.getElementById('deleteModal');
+                        modal.style.display = 'block';
+                        
+                        // Wait 1.5 seconds, then redirect to homepage
+                        setTimeout(() => {
+                            window.location.href = '/';
+                        }, 1500);
+                    } else {
+                        alert(data.message || 'Error deleting content');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while deleting the content');
+                });
+            }
+        });
     </script>
 </body>
 </html>
